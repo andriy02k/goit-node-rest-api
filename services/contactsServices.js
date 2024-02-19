@@ -1,12 +1,16 @@
-const { nanoid } = require("nanoid");
-const fs = require("node:fs/promises");
-const path = require("node:path");
+import { nanoid } from "nanoid";
+import { readFile, writeFile } from "fs/promises";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const contactsPath = path.join(__dirname, "db", "contacts.json");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const contactsPath = join(dirname(__dirname), "db", "contacts.json");
 
 async function listContacts() {
   try {
-    const data = await fs.readFile(contactsPath, { encoding: "utf-8" });
+    const data = await readFile(contactsPath, { encoding: "utf-8" });
     return JSON.parse(data);
   } catch (error) {
     throw error;
@@ -30,7 +34,7 @@ async function removeContact(contactId) {
     if (!removedContact) return null;
 
     const updateList = contacts.filter((item) => item.id !== contactId);
-    await fs.writeFile(contactsPath, JSON.stringify(updateList));
+    await writeFile(contactsPath, JSON.stringify(updateList));
 
     return removedContact;
   } catch (error) {
@@ -44,7 +48,7 @@ async function addContact(name, email, phone) {
     const newContact = { id: nanoid(), name, email, phone };
 
     const updateList = [...contacts, newContact];
-    await fs.writeFile(contactsPath, JSON.stringify(updateList));
+    await writeFile(contactsPath, JSON.stringify(updateList));
 
     return newContact;
   } catch (error) {
@@ -52,9 +56,30 @@ async function addContact(name, email, phone) {
   }
 }
 
-module.exports = {
+async function UpToDateContact(id, news) {
+  try {
+    const contacts = await listContacts();
+    console.log(contacts);
+    const idx = contacts.findIndex((el) => el.id === id);
+    console.log(idx);
+
+    if (idx === -1) return null;
+    console.log(contacts[idx]);
+    contacts[idx] = { ...contacts[idx], ...news };
+    console.log(contacts);
+    await writeFile(contactsPath, JSON.stringify(contacts));
+    console.log(contacts[idx]);
+
+    return contacts[idx];
+  } catch (error) {
+    throw error;
+  }
+}
+
+export {
   listContacts,
   getContactById,
   removeContact,
   addContact,
+  UpToDateContact,
 };
