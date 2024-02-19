@@ -24,12 +24,10 @@ export const getOneContact = async (req, res, next) => {
   try {
     const { id } = req.params;
     const contact = await getContactById(id);
-
     if (contact) {
       res.status(200).json(contact);
       return;
     }
-
     next(HttpError(404));
   } catch (error) {
     next(error).json({ message: "Server error" });
