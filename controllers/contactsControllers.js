@@ -1,36 +1,30 @@
-import {
-  listContacts,
-  getContactById,
-  removeContact,
-  addContact,
-  UpToDateContact,
-} from "../services/contactsServices.js";
+import Contact from "../models/contacts.js";
 import {
   createContactSchema,
   updateContactSchema,
+  updateStatusContactSchema,
 } from "../schemas/contactsSchemas.js";
 import HttpError from "../helpers/HttpError.js";
 
 export const getAllContacts = async (req, res, next) => {
   try {
-    const contactsList = await listContacts();
-    res.status(200).json(contactsList);
+    const contactsList = await Contact.find();
+    res.send(contactsList);
   } catch (error) {
-    next(error).json({ message: "Server error" });
+    next(error);
   }
 };
-
 export const getOneContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const contact = await getContactById(id);
+    const contact = await Contact.findById(id);
 
-    if (contact) {
-      res.status(200).json(contact);
+    if (contact === null) {
+      next(HttpError(404));
       return;
     }
 
-    next(HttpError(404));
+    res.status(200).send(contact);
   } catch (error) {
     next(error).json({ message: "Server error" });
   }
@@ -39,14 +33,14 @@ export const getOneContact = async (req, res, next) => {
 export const deleteContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const contact = await removeContact(id);
+    const contact = await Contact.findByIdAndDelete(id);
 
-    if (contact) {
-      res.status(200).json(contact);
+    if (contact === null) {
+      next(HttpError(404));
       return;
     }
 
-    next(HttpError(404));
+    res.status(200).send(contact);
   } catch (error) {
     next(error).json({ message: "Server error" });
   }
@@ -54,19 +48,19 @@ export const deleteContact = async (req, res, next) => {
 
 export const createContact = async (req, res, next) => {
   try {
-    const {
-      name = "name",
-      email = "name@gamil.com",
-      phone = "name",
-    } = req.body;
-    const { error } = createContactSchema.validate({ name, email, phone });
+    const newContact = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+    };
+    const { error } = createContactSchema.validate(newContact);
 
     if (typeof error !== "undefined") {
       next(HttpError(400, error.message));
     }
-    const newContact = await addContact(name, email, phone);
+    const result = await Contact.create(newContact);
 
-    res.status(201).json(newContact);
+    res.status(201).send(result);
   } catch (error) {
     next(error).json({ message: "Server error" });
   }
@@ -75,24 +69,97 @@ export const createContact = async (req, res, next) => {
 export const updateContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, phone } = req.body;
-    if (!name && !email && !phone) {
+    const updatedContact = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+    };
+
+    if (
+      !updatedContact.name &&
+      !updatedContact.email &&
+      !updatedContact.phone
+    ) {
       next(HttpError(400, "Body must have at least one field"));
     }
 
-    const { error } = updateContactSchema.validate({ name, email, phone });
+    const { error } = updateContactSchema.validate(updatedContact);
     if (typeof error !== "undefined") {
       next(HttpError(400, error.message));
     }
 
-    const contact = await getContactById(id);
-    if (!contact) {
+    const result = await Contact.findByIdAndUpdate(id, updatedContact);
+
+    if (result === null) {
       next(HttpError(404));
     }
 
-    const updateContact = await UpToDateContact(id, { name, email, phone });
-    res.status(200).json(updateContact);
+    res.status(200).send(result);
   } catch (error) {
     next(error).json({ message: "Server error" });
   }
 };
+
+export const updateStatusContact = async (req, res, next) => {
+  try {
+    const { contactId } = req.params;
+    const { favorite } = req.body;
+
+    if (favorite === undefined) {
+      next(HttpError(400, "Favorite field is required for update"));
+      return;
+    }
+
+    const { error } = updateStatusContactSchema.validate({ favorite });
+    if (typeof error !== "undefined") {
+      next(HttpError(400, error.message));
+    }
+
+    const result = await Contact.findByIdAndUpdate(
+      contactId,
+      { favorite },
+      { new: true }
+    );
+
+    if (result === null) {
+      next(HttpError(404));
+    }
+
+    res.status(200).send(result);
+  } catch (error) {
+    next(error).json({ message: "Server error" });
+  }
+};
+
+// export const updateStatusContact = async (req, res, next) => {
+//   try {
+//     const { contactId } = req.params;
+//     const updateField = {
+//       favorite: req.body.favorite,
+//     };
+
+//     if (updateField.favorite === undefined) {
+//       next(HttpError(400, "Favorite field is required for update"));
+//       return;
+//     }
+
+//     const { error } = updateStatusContactSchema.validate(updateField);
+//     if (typeof error !== "undefined") {
+//       next(HttpError(400, error.message));
+//     }
+
+//     const result = await Contact.findByIdAndUpdate(
+//       contactId,
+//       { $set: updateField },
+//       { new: true }
+//     );
+
+//     if (result === null) {
+//       next(HttpError(404));
+//     }
+
+//     res.status(200).send(result);
+//   } catch (error) {
+//     next(error).json({ message: "Server error" });
+//   }
+// };
