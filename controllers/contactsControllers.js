@@ -8,7 +8,7 @@ import HttpError from "../helpers/HttpError.js";
 
 export const getAllContacts = async (req, res, next) => {
   try {
-    const contactsList = await Contact.find();
+    const contactsList = await Contact.find({ owner: req.user.id });
     res.send(contactsList);
   } catch (error) {
     next(error);
@@ -17,9 +17,14 @@ export const getAllContacts = async (req, res, next) => {
 export const getOneContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const contact = await Contact.findById(id);
+    const contact = await Contact.findOne({ _id: id, owner: req.user.id });
 
     if (contact === null) {
+      next(HttpError(404));
+      return;
+    }
+
+    if (contact.owner.toString() !== req.user.id) {
       next(HttpError(404));
       return;
     }
@@ -33,7 +38,10 @@ export const getOneContact = async (req, res, next) => {
 export const deleteContact = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const contact = await Contact.findByIdAndDelete(id);
+    const contact = await Contact.findOneAndDelete({
+      _id: id,
+      owner: req.user.id,
+    });
 
     if (contact === null) {
       next(HttpError(404));
@@ -52,6 +60,7 @@ export const createContact = async (req, res, next) => {
       name: req.body.name,
       email: req.body.email,
       phone: req.body.phone,
+      owner: req.user.id,
     };
     const { error } = createContactSchema.validate(newContact);
 
@@ -88,7 +97,11 @@ export const updateContact = async (req, res, next) => {
       next(HttpError(400, error.message));
     }
 
-    const result = await Contact.findByIdAndUpdate(id, updatedContact);
+    const result = await Contact.findOneAndUpdate(
+      { _id: id, owner: req.user.id },
+      updatedContact,
+      { new: true }
+    );
 
     if (result === null) {
       next(HttpError(404));
@@ -130,36 +143,3 @@ export const updateStatusContact = async (req, res, next) => {
     next(error).json({ message: "Server error" });
   }
 };
-
-// export const updateStatusContact = async (req, res, next) => {
-//   try {
-//     const { contactId } = req.params;
-//     const updateField = {
-//       favorite: req.body.favorite,
-//     };
-
-//     if (updateField.favorite === undefined) {
-//       next(HttpError(400, "Favorite field is required for update"));
-//       return;
-//     }
-
-//     const { error } = updateStatusContactSchema.validate(updateField);
-//     if (typeof error !== "undefined") {
-//       next(HttpError(400, error.message));
-//     }
-
-//     const result = await Contact.findByIdAndUpdate(
-//       contactId,
-//       { $set: updateField },
-//       { new: true }
-//     );
-
-//     if (result === null) {
-//       next(HttpError(404));
-//     }
-
-//     res.status(200).send(result);
-//   } catch (error) {
-//     next(error).json({ message: "Server error" });
-//   }
-// };
