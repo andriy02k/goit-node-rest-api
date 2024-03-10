@@ -1,5 +1,8 @@
+import * as fs from "node:fs/promises";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import gravatar from "gravatar";
+import jimp from "jimp";
 import User from "../models/users.js";
 import { createUser, loginUser } from "../schemas/usersSchemas.js";
 import HttpError from "../helpers/HttpError.js";
@@ -21,12 +24,18 @@ export const register = async (req, res, next) => {
       return res.status(409).send({ message: "User already registered" });
     }
 
+    const avatarURL = gravatar.url(normalizedEmail, {
+      s: "200",
+      r: "pg",
+      d: "404",
+    });
     const passwordHash = await bcrypt.hash(password, 10);
 
     await User.create({
       name,
       email: normalizedEmail,
       password: passwordHash,
+      avatarURL,
     });
 
     res.status(201).send({ message: "Registration successfully" });
@@ -80,6 +89,36 @@ export const logout = async (req, res, next) => {
     await User.findByIdAndUpdate(req.user.id, { token: null });
 
     res.status(204).send({ message: "No Content" }).end();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "public/avatars",
+      req.file.filename
+    );
+
+    await fs.rename(req.file.path, filePath);
+
+    const image = await jimp.read(filePath);
+    await image.resize(250, 250);
+    await image.write(filePath);
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { avatarURL: req.file.filename },
+      { new: true }
+    );
+
+    if (user === null) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    res.send(user);
   } catch (error) {
     next(error);
   }
