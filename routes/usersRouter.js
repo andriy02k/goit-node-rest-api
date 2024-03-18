@@ -5,6 +5,7 @@ import {
   logout,
   uploadAvatar,
   verify,
+  resend,
 } from "../controllers/authControllers.js";
 import { auth } from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
@@ -19,6 +20,8 @@ usersRouter.get("/logout", auth, logout);
 
 usersRouter.patch("/avatar", auth, upload.single("avatar"), uploadAvatar);
 
-usersRouter.get("/verify/:token", verify);
+usersRouter.get("/verify/:verifyToken", verify);
+
+usersRouter.post("/verify", resend);
 
 export default usersRouter;

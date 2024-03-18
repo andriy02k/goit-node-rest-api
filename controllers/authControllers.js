@@ -153,10 +153,10 @@ export const uploadAvatar = async (req, res, next) => {
 };
 
 export const verify = async (req, res, next) => {
-  const { token } = req.params;
+  const { verifyToken } = req.params;
 
   try {
-    const user = await User.findOne({ verifyToken: token });
+    const user = await User.findOne({ verifyToken });
 
     if (user === null) {
       return res.status(404).send({
@@ -169,6 +169,41 @@ export const verify = async (req, res, next) => {
     res.send({
       message: "Verification successful",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resend = async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).send({ message: "missing required field email" });
+  }
+  try {
+    const user = await User.findOne({ email });
+
+    if (user === null) {
+      return res.status(404).send({ message: "User not found" });
+    }
+
+    if (user.verify) {
+      return res
+        .status(400)
+        .send({ message: "Verification has already been passed" });
+    }
+
+    const verifyToken = user.verifyToken;
+
+    await transport.sendMail({
+      to: email,
+      from: "krainyk02@gmail.com",
+      subject: "Welcome to phonebook!",
+      html: `To confirm you registration, please click on the <a href="http://localhost:3000/api/users/verify/${verifyToken}">link</a>`,
+      text: `To confirm you registration, please open the link http://localhost:3000/api/users/verify/${verifyToken}`,
+    });
+
+    res.status(200).send({ message: "Verification email has been resent" });
   } catch (error) {
     next(error);
   }
