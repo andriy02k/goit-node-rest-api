@@ -10,6 +10,7 @@ const contactsSchema = new Schema({
   },
   phone: {
     type: String,
+    required: true,
   },
   favorite: {
     type: Boolean,
@@ -17,7 +18,7 @@ const contactsSchema = new Schema({
   },
   owner: {
     type: Schema.Types.ObjectId,
-    required: true,
+    // required: true,
     ref: "user",
   },
 });
