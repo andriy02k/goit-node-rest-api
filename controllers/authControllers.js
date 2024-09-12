@@ -60,6 +60,7 @@ export const register = async (req, res, next) => {
       password: passwordHash,
       avatarURL,
       verifyToken,
+      verify: true, //removed
     });
 
     res.status(201).send({ message: "Registration successfully" });
